@@ -4,7 +4,7 @@
  * Tailwind CDN + DM Sans — see index.html
  */
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const COLORS = {
   navyHeader: "#1B2A4A",
@@ -20,7 +20,20 @@ const COLORS = {
   warningBg: "#FFFBEB",
 };
 
-function Header({ title, showBack, onBack, variant = "default" }) {
+function formatVisitDateMay2026(day) {
+  const d = new Date(2026, 4, day);
+  const jours = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
+  return `${jours[d.getDay()]} ${day} mai 2026`;
+}
+
+function centerSummaryLine(centerList, centerId) {
+  const c = centerList.find((x) => x.id === centerId);
+  if (!c) return "—";
+  const short = c.name.replace(/^Centre\s+/i, "").trim();
+  return `${short}, Tunis`;
+}
+
+function Header({ title, showBack, onBack, variant = "default", onProfileTap }) {
   const isHome = variant === "home";
   const isConfirmation = variant === "confirmation";
   const showBrand = variant === "steps";
@@ -74,13 +87,15 @@ function Header({ title, showBack, onBack, variant = "default" }) {
       </div>
       <div className="w-10 flex justify-end shrink-0">
         {isHome && (
-          <div
-            className="h-9 w-9 rounded-full flex items-center justify-center"
+          <button
+            type="button"
+            onClick={onProfileTap}
+            className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border-0 p-0 cursor-pointer"
             style={{ backgroundColor: "#9CA3AF" }}
-            aria-hidden
+            aria-label="Profil"
           >
             <span className="text-white text-lg">👤</span>
-          </div>
+          </button>
         )}
         {showBrand && (
           <span
@@ -142,6 +157,50 @@ function StepBar({ current }) {
   );
 }
 
+function ShellFont({ children, className = "" }) {
+  return (
+    <div
+      className={`w-full min-h-[100vh] flex flex-col antialiased ${className}`}
+      style={{
+        fontFamily: "'DM Sans', system-ui, sans-serif",
+        color: COLORS.textPrimary,
+        fontSize: 14,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SimpleAuxPage({ title, onBack, children }) {
+  return (
+    <ShellFont>
+      <Header variant="page" title={title} showBack onBack={onBack} />
+      <div
+        className="flex-1 overflow-y-auto w-full px-4 pb-8"
+        style={{ backgroundColor: COLORS.pageBg }}
+      >
+        {children}
+      </div>
+    </ShellFont>
+  );
+}
+
+function InfoCard({ children, className = "" }) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${className}`}
+      style={{
+        backgroundColor: COLORS.cardBg,
+        borderColor: COLORS.border,
+        borderRadius: 12,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function PrimaryButton({ label, onClick, className = "" }) {
   return (
     <div
@@ -167,16 +226,43 @@ function PrimaryButton({ label, onClick, className = "" }) {
   );
 }
 
-function HomeScreen({ onBook, tabBarStyle }) {
+function HomeScreen({
+  onBook,
+  tabBarStyle,
+  mainTab,
+  onTabHome,
+  onTabProfile,
+  onOpenReminder,
+  onOpenAppointments,
+  onOpenResults,
+  onOpenHistory,
+  onOpenSupport,
+  onProfileTap,
+}) {
+  const homeTabActive = mainTab === "home";
+  const navy = COLORS.primaryBlue;
+  const grey = COLORS.textSecondary;
+
   return (
     <div
       className="flex flex-col w-full"
       style={{ minHeight: "100vh", backgroundColor: COLORS.pageBg }}
     >
-      <Header variant="home" />
+      {homeTabActive ? (
+        <Header variant="home" onProfileTap={onProfileTap} />
+      ) : (
+        <Header variant="page" title="Profil" showBack={false} />
+      )}
       <div className="flex-1 w-full pb-24">
-        <div
-          className="mx-4 mt-4 flex gap-3 items-start rounded-xl border overflow-hidden"
+        {!homeTabActive ? (
+          <ProfileTabContent />
+        ) : null}
+        {homeTabActive ? (
+          <>
+            <button
+          type="button"
+          onClick={onOpenReminder}
+          className="mx-4 mt-4 flex gap-3 items-start rounded-xl border overflow-hidden w-[calc(100%-2rem)] text-left cursor-pointer"
           style={{
             backgroundColor: COLORS.warningBg,
             borderColor: "#FBBF24",
@@ -184,6 +270,7 @@ function HomeScreen({ onBook, tabBarStyle }) {
             borderLeftColor: "#EA580C",
             padding: "14px 12px",
             minHeight: 44,
+            fontFamily: "inherit",
           }}
         >
           <span className="text-xl shrink-0" aria-hidden>
@@ -199,7 +286,7 @@ function HomeScreen({ onBook, tabBarStyle }) {
             Votre visite technique expire dans <strong>23 jours</strong> —
             planifiez dès maintenant.
           </p>
-        </div>
+        </button>
 
         <button
           type="button"
@@ -236,19 +323,22 @@ function HomeScreen({ onBook, tabBarStyle }) {
         </h2>
         <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
           {[
-            { icon: "📅", label: "Mes rendez-vous" },
-            { icon: "📚", label: "Résultats" },
-            { icon: "🕐", label: "Historique" },
-            { icon: "💬", label: "Support" },
-          ].map(({ icon, label }) => (
-            <div
+            { icon: "📅", label: "Mes rendez-vous", onClick: onOpenAppointments },
+            { icon: "📚", label: "Résultats", onClick: onOpenResults },
+            { icon: "🕐", label: "Historique", onClick: onOpenHistory },
+            { icon: "💬", label: "Support", onClick: onOpenSupport },
+          ].map(({ icon, label, onClick }) => (
+            <button
               key={label}
-              className="flex flex-col items-center justify-center rounded-xl border text-center px-2 py-4"
+              type="button"
+              onClick={onClick}
+              className="flex flex-col items-center justify-center rounded-xl border text-center px-2 py-4 cursor-pointer"
               style={{
                 backgroundColor: COLORS.cardBg,
                 borderColor: COLORS.border,
                 borderRadius: 12,
                 minHeight: 100,
+                fontFamily: "inherit",
               }}
             >
               <div className="text-2xl mb-2">{icon}</div>
@@ -258,9 +348,11 @@ function HomeScreen({ onBook, tabBarStyle }) {
               >
                 {label}
               </span>
-            </div>
+            </button>
           ))}
         </div>
+          </>
+        ) : null}
       </div>
 
       <nav
@@ -276,26 +368,326 @@ function HomeScreen({ onBook, tabBarStyle }) {
       >
         <button
           type="button"
+          onClick={onTabHome}
           className="flex-1 flex flex-col items-center justify-center gap-1 pt-2"
-          style={{ color: COLORS.primaryBlue, minHeight: 44 }}
+          style={{ color: homeTabActive ? navy : grey, minHeight: 44 }}
         >
           <span className="text-xl">🏠</span>
-          <span className="text-xs font-semibold">Accueil</span>
           <span
-            className="h-1 w-1 rounded-full"
-            style={{ backgroundColor: COLORS.primaryBlue }}
-          />
+            className="text-xs font-semibold"
+            style={{ fontWeight: homeTabActive ? 600 : 500 }}
+          >
+            Accueil
+          </span>
+          {homeTabActive && (
+            <span className="h-1 w-1 rounded-full" style={{ backgroundColor: navy }} />
+          )}
         </button>
         <button
           type="button"
-          className="flex-1 flex flex-col items-center justify-center pt-2"
-          style={{ color: COLORS.textSecondary, minHeight: 44 }}
+          onClick={onTabProfile}
+          className="flex-1 flex flex-col items-center justify-center gap-1 pt-2"
+          style={{ color: !homeTabActive ? navy : grey, minHeight: 44 }}
         >
           <span className="text-xl">👤</span>
-          <span className="text-xs font-medium">Profil</span>
+          <span
+            className="text-xs font-medium"
+            style={{ fontWeight: !homeTabActive ? 600 : 400 }}
+          >
+            Profil
+          </span>
+          {!homeTabActive && (
+            <span className="h-1 w-1 rounded-full" style={{ backgroundColor: navy }} />
+          )}
         </button>
       </nav>
     </div>
+  );
+}
+
+function ProfileTabContent() {
+  return (
+    <>
+      <div className="px-4 pt-6 pb-4 flex flex-col items-center">
+        <div
+          className="h-20 w-20 rounded-full flex items-center justify-center mb-3"
+          style={{ backgroundColor: "#9CA3AF" }}
+        >
+          <span className="text-white text-3xl">👤</span>
+        </div>
+        <p className="font-bold" style={{ fontSize: 17 }}>
+          Invité ATTT
+        </p>
+        <p style={{ fontSize: 14, color: COLORS.textSecondary }}>
+          Tunis, Tunisie
+        </p>
+      </div>
+      <div className="px-4 space-y-3">
+        <InfoCard>
+          <p
+            className="uppercase font-semibold mb-3"
+            style={{ fontSize: 11, color: COLORS.textSecondary }}
+          >
+            Coordonnées
+          </p>
+          {[
+            ["Téléphone", "+216 71 222 334"],
+            ["E-mail", "contact.exemple@gouv.tn"],
+          ].map(([k, v], i) => (
+            <div
+              key={k}
+              className="flex justify-between gap-2 py-3"
+              style={{
+                borderTop:
+                  i > 0 ? `1px solid ${COLORS.border}` : undefined,
+              }}
+            >
+              <span style={{ color: COLORS.textSecondary, fontSize: 14 }}>
+                {k}
+              </span>
+              <span className="font-semibold text-right" style={{ fontSize: 14 }}>
+                {v}
+              </span>
+            </div>
+          ))}
+        </InfoCard>
+        <InfoCard>
+          <p
+            className="uppercase font-semibold mb-1"
+            style={{ fontSize: 11, color: COLORS.textSecondary }}
+          >
+            À propos
+          </p>
+          <p style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+            Compte fictif démo. Les données sont statiques dans cette maquette front-end.
+          </p>
+        </InfoCard>
+      </div>
+    </>
+  );
+}
+
+function OutlineRowButton({ label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full font-semibold mt-2"
+      style={{
+        height: 44,
+        borderRadius: 10,
+        border: `1.5px solid ${COLORS.primaryBlue}`,
+        backgroundColor: COLORS.cardBg,
+        color: COLORS.primaryBlue,
+        fontSize: 15,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ScreenVisitReminder({ onBack }) {
+  return (
+    <SimpleAuxPage title="Rappel visite" onBack={onBack}>
+      <div className="pt-4 space-y-3">
+        <InfoCard>
+          <p className="font-bold mb-2" style={{ fontSize: 16 }}>
+            Échéance proche
+          </p>
+          <p style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+            Votre visite technique doit être renouvelée dans <strong>23 jours</strong>.
+            Réservez depuis l’accueil, rubrique « Visite technique ».
+          </p>
+        </InfoCard>
+      </div>
+    </SimpleAuxPage>
+  );
+}
+
+function ScreenAppointments({ onBack }) {
+  return (
+    <SimpleAuxPage title="Mes rendez-vous" onBack={onBack}>
+      <div className="pt-4 space-y-3">
+        <InfoCard>
+          <div className="flex justify-between items-start gap-2 mb-1">
+            <span className="font-bold" style={{ fontSize: 15 }}>
+              RDV-2026-08471
+            </span>
+            <span
+              className="rounded-full px-2 py-0.5 shrink-0"
+              style={{
+                backgroundColor: "#DCFCE7",
+                fontSize: 12,
+                color: "#166534",
+                fontWeight: 600,
+              }}
+            >
+              Confirmé
+            </span>
+          </div>
+          <p style={{ fontSize: 13, color: COLORS.textSecondary }}>
+            Centre Sijoumi, Tunis · Mer. 13 mai 2026 · 09:30
+          </p>
+          <OutlineRowButton
+            label="Voir le détail (démo)"
+            onClick={() =>
+              window.alert("Détail du rendez-vous (données fictives).")
+            }
+          />
+        </InfoCard>
+      </div>
+    </SimpleAuxPage>
+  );
+}
+
+function ScreenResults({ onBack }) {
+  return (
+    <SimpleAuxPage title="Résultats" onBack={onBack}>
+      <div className="pt-4 space-y-3">
+        <InfoCard>
+          <p
+            className="uppercase font-semibold mb-2"
+            style={{ fontSize: 11, color: COLORS.textSecondary }}
+          >
+            Dernière visite
+          </p>
+          <p className="font-bold" style={{ fontSize: 16 }}>
+            Visite favorable
+          </p>
+          <p style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 6 }}>
+            123 TU 4567 · Mars 2026 · Centre Sijoumi
+          </p>
+          <OutlineRowButton
+            label="Télécharger le procès-verbal (démo)"
+            onClick={() =>
+              window.alert("Téléchargement simulé (aucun fichier).")
+            }
+          />
+        </InfoCard>
+      </div>
+    </SimpleAuxPage>
+  );
+}
+
+function ScreenHistory({ onBack }) {
+  const rows = [
+    ["Déc. 2024", "Sijoumi", "Favorable"],
+    ["Déc. 2023", "Ben Arous", "Favorable"],
+  ];
+  return (
+    <SimpleAuxPage title="Historique" onBack={onBack}>
+      <div className="pt-4 space-y-3">
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{
+            backgroundColor: COLORS.cardBg,
+            borderColor: COLORS.border,
+            borderRadius: 12,
+          }}
+        >
+          {rows.map(([date, place, res], i) => (
+            <div
+              key={date}
+              className="flex justify-between items-center gap-2 px-4 py-3"
+              style={{
+                borderBottom:
+                  i < rows.length - 1
+                    ? `1px solid ${COLORS.border}`
+                    : undefined,
+                minHeight: 48,
+              }}
+            >
+              <div>
+                <p className="font-bold" style={{ fontSize: 14 }}>
+                  {date}
+                </p>
+                <p style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                  {place}
+                </p>
+              </div>
+              <span className="font-semibold" style={{ fontSize: 13 }}>
+                {res}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </SimpleAuxPage>
+  );
+}
+
+function ScreenSupport({ onBack }) {
+  const [topic, setTopic] = useState(null);
+  const copy = {
+    horaires:
+      "Les centres sont ouverts du lundi au samedi (heures indicatives : 8h–16h). Démo statique.",
+    vert:
+      "Numéro d’information fictif : +216 71 000 000. Aucun appel réel depuis cette maquette.",
+    faq: "Questions fréquentes : délais, documents, renouvellement. Contenu de démonstration sans API.",
+  };
+  return (
+    <SimpleAuxPage title="Support" onBack={onBack}>
+      <div className="pt-4 space-y-3">
+        <button
+          type="button"
+          className="w-full text-left rounded-xl border p-4 cursor-pointer"
+          style={{
+            borderColor: COLORS.border,
+            backgroundColor: COLORS.cardBg,
+            borderRadius: 12,
+          }}
+          onClick={() => setTopic((t) => (t === "horaires" ? null : "horaires"))}
+        >
+          <span className="font-bold" style={{ fontSize: 15 }}>
+            Horaires des centres
+          </span>
+          {topic === "horaires" && (
+            <p className="mt-2" style={{ fontSize: 14, color: COLORS.textSecondary }}>
+              {copy.horaires}
+            </p>
+          )}
+        </button>
+        <button
+          type="button"
+          className="w-full text-left rounded-xl border p-4 cursor-pointer"
+          style={{
+            borderColor: COLORS.border,
+            backgroundColor: COLORS.cardBg,
+            borderRadius: 12,
+          }}
+          onClick={() => setTopic((t) => (t === "vert" ? null : "vert"))}
+        >
+          <span className="font-bold" style={{ fontSize: 15 }}>
+            Numéro d’information
+          </span>
+          {topic === "vert" && (
+            <p className="mt-2" style={{ fontSize: 14, color: COLORS.textSecondary }}>
+              {copy.vert}
+            </p>
+          )}
+        </button>
+        <button
+          type="button"
+          className="w-full text-left rounded-xl border p-4 cursor-pointer"
+          style={{
+            borderColor: COLORS.border,
+            backgroundColor: COLORS.cardBg,
+            borderRadius: 12,
+          }}
+          onClick={() => setTopic((t) => (t === "faq" ? null : "faq"))}
+        >
+          <span className="font-bold" style={{ fontSize: 15 }}>
+            FAQ rapide
+          </span>
+          {topic === "faq" && (
+            <p className="mt-2" style={{ fontSize: 14, color: COLORS.textSecondary }}>
+              {copy.faq}
+            </p>
+          )}
+        </button>
+      </div>
+    </SimpleAuxPage>
   );
 }
 
@@ -326,10 +718,15 @@ function PillRow({ options, selected, onSelect }) {
   );
 }
 
-function Step1Vehicle({ onContinue, plate, setPlate }) {
-  const [plateType, setPlateType] = useState("Tunisienne");
-  const [category, setCategory] = useState("Voiture particulière");
-
+function Step1Vehicle({
+  onContinue,
+  plate,
+  setPlate,
+  plateType,
+  setPlateType,
+  category,
+  setCategory,
+}) {
   const cats = [
     { key: "Voiture particulière", emoji: "🚗" },
     { key: "Véhicule utilitaire", emoji: "🚙" },
@@ -484,6 +881,10 @@ const CENTERS = [
 ];
 
 function Step2Center({ centerId, setCenterId, onContinue }) {
+  const [govOpen, setGovOpen] = useState(false);
+  const [gov, setGov] = useState("Tunis");
+  const govs = ["Tunis", "Ben Arous", "Ariana", "Bizerte"];
+
   return (
     <div
       className="flex flex-col w-full flex-1 min-h-0"
@@ -491,42 +892,72 @@ function Step2Center({ centerId, setCenterId, onContinue }) {
     >
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
         <div
-          className="rounded-xl border p-3 mt-4 flex gap-2 items-stretch"
+          className="rounded-xl border p-3 mt-4 flex flex-col gap-2"
           style={{
             backgroundColor: COLORS.cardBg,
             borderColor: COLORS.border,
             borderRadius: 12,
           }}
         >
-          <div
-            className="flex-1 flex items-center justify-between px-3 border rounded-full"
-            style={{
-              borderColor: COLORS.border,
-              backgroundColor: "#F3F4F6",
-              minHeight: 44,
-              fontSize: 14,
-              color: COLORS.textSecondary,
-            }}
-          >
-            <span>Gouvernorat...</span>
-            <span className="text-xs">▾</span>
+          <div className="flex gap-2 items-stretch">
+            <button
+              type="button"
+              className="flex-1 flex items-center justify-between px-3 border rounded-full text-left cursor-pointer"
+              style={{
+                borderColor: COLORS.border,
+                backgroundColor: "#F3F4F6",
+                minHeight: 44,
+                fontSize: 14,
+                color: COLORS.textSecondary,
+              }}
+              onClick={() => setGovOpen((o) => !o)}
+            >
+              <span>{gov}</span>
+              <span className="text-xs">▾</span>
+            </button>
+            <button
+              type="button"
+              className="border flex items-center justify-center shrink-0 cursor-pointer"
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                borderColor: COLORS.border,
+                backgroundColor: COLORS.cardBg,
+              }}
+              onClick={() => setGovOpen(false)}
+              aria-label="Rechercher"
+            >
+              <span style={{ fontSize: 18 }}>🔍</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="border flex items-center justify-center shrink-0"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 8,
-              borderColor: COLORS.border,
-              backgroundColor: COLORS.cardBg,
-            }}
-          >
-            <span style={{ fontSize: 18 }}>🔍</span>
-          </button>
+          {govOpen && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {govs.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className="px-3 py-2 rounded-full border text-sm cursor-pointer"
+                  style={{
+                    borderColor:
+                      gov === g ? COLORS.primaryBlue : COLORS.border,
+                    backgroundColor:
+                      gov === g ? "#EFF6FF" : COLORS.cardBg,
+                    fontWeight: gov === g ? 600 : 400,
+                  }}
+                  onClick={() => {
+                    setGov(g);
+                    setGovOpen(false);
+                  }}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <p style={{ fontSize: 14, color: COLORS.textSecondary }}>
-          3 centres disponibles — Tunis
+          {`3 centres disponibles — ${gov}`}
         </p>
         <div className="flex flex-col gap-3">
           {CENTERS.map((c) => {
@@ -657,22 +1088,28 @@ function slotIsSelectable(s) {
   return true;
 }
 
-function Step3Calendar({ onContinue }) {
-  const [selectedDay, setSelectedDay] = useState(13);
-  const [slot, setSlot] = useState("09:30");
+function Step3Calendar({
+  onContinue,
+  selectedDay,
+  setSelectedDay,
+  slot,
+  setSlot,
+}) {
+  const monthCycle = ["Avril 2026", "Mai 2026", "Juin 2026"];
+  const [monthIdx, setMonthIdx] = useState(1);
 
   const cells = [];
   for (let i = 0; i < MAY_2026.offset; i++) cells.push(null);
   for (let d = 1; d <= MAY_2026.daysInMonth; d++) cells.push(d);
 
-  const dayBtn = (d) => {
-    if (!d) return <div key={`e-${d}`} />;
+  const dayBtn = (d, padIdx) => {
+    if (!d) return <div key={`pad-${padIdx}`} />;
     const isToday = d === 8;
     const isSel = d === selectedDay;
     const isFull = DISABLED_FULL.has(d);
     return (
       <button
-        key={d}
+        key={`d-${d}`}
         type="button"
         disabled={isFull}
         onClick={() => !isFull && setSelectedDay(d)}
@@ -708,13 +1145,25 @@ function Step3Calendar({ onContinue }) {
           }}
         >
           <div className="flex items-center justify-between mb-2">
-            <button type="button" className="p-2 min-w-[44px] text-lg">
+            <button
+              type="button"
+              className="p-2 min-w-[44px] text-lg cursor-pointer"
+              onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
+              aria-label="Mois précédent"
+            >
               ‹
             </button>
             <span className="font-bold" style={{ fontSize: 16 }}>
-              Mai 2026
+              {monthCycle[monthIdx]}
             </span>
-            <button type="button" className="p-2 min-w-[44px] text-lg">
+            <button
+              type="button"
+              className="p-2 min-w-[44px] text-lg cursor-pointer"
+              onClick={() =>
+                setMonthIdx((i) => Math.min(monthCycle.length - 1, i + 1))
+              }
+              aria-label="Mois suivant"
+            >
               ›
             </button>
           </div>
@@ -728,7 +1177,9 @@ function Step3Calendar({ onContinue }) {
               </span>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-y-2">{cells.map((d) => dayBtn(d))}</div>
+          <div className="grid grid-cols-7 gap-y-2">
+            {cells.map((d, padIdx) => dayBtn(d, padIdx))}
+          </div>
           <div className="flex gap-4 mt-3 pt-2 items-center flex-wrap">
             <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
               ● Disponible
@@ -842,7 +1293,14 @@ function SummaryCard({ title, rows }) {
   );
 }
 
-function Step4Summary({ plate, onConfirm }) {
+function Step4Summary({
+  plate,
+  category,
+  centerLine,
+  dateLine,
+  timeLine,
+  onConfirm,
+}) {
   return (
     <div
       className="flex flex-col w-full flex-1 min-h-0"
@@ -854,16 +1312,16 @@ function Step4Summary({ plate, onConfirm }) {
             title="VÉHICULE"
             rows={[
               ["Immatriculation", plate],
-              ["Catégorie", "Voiture particulière"],
+              ["Catégorie", category],
               ["Type de visite", "Périodique"],
             ]}
           />
           <SummaryCard
             title="RENDEZ-VOUS"
             rows={[
-              ["Centre", "Sijoumi, Tunis"],
-              ["Date", "Mer. 13 mai 2026"],
-              ["Heure", "09:30"],
+              ["Centre", centerLine],
+              ["Date", dateLine],
+              ["Heure", timeLine],
             ]}
           />
           <SummaryCard
@@ -895,7 +1353,22 @@ function Step4Summary({ plate, onConfirm }) {
   );
 }
 
-function ConfirmationScreen({ plate, onHome }) {
+function ConfirmationScreen({
+  plate,
+  centerLine,
+  dateLine,
+  timeLine,
+  onHome,
+}) {
+  const [hint, setHint] = useState("");
+  const hintRef = useRef(null);
+
+  const flashHint = (msg) => {
+    if (hintRef.current) window.clearTimeout(hintRef.current);
+    setHint(msg);
+    hintRef.current = window.setTimeout(() => setHint(""), 2200);
+  };
+
   return (
     <div
       className="flex flex-col w-full flex-1"
@@ -967,9 +1440,9 @@ function ConfirmationScreen({ plate, onHome }) {
           }}
         >
           {[
-            ["Centre", "Sijoumi, Tunis"],
-            ["Date", "Mer. 13 mai 2026"],
-            ["Heure", "09:30"],
+            ["Centre", centerLine],
+            ["Date", dateLine],
+            ["Heure", timeLine],
             ["Plaque", plate],
           ].map(([k, v], i, arr) => (
             <div
@@ -997,7 +1470,7 @@ function ConfirmationScreen({ plate, onHome }) {
         <div className="w-full space-y-3">
           <button
             type="button"
-            className="w-full font-semibold"
+            className="w-full font-semibold cursor-pointer"
             style={{
               height: 52,
               borderRadius: 10,
@@ -1006,12 +1479,13 @@ function ConfirmationScreen({ plate, onHome }) {
               color: COLORS.primaryBlue,
               fontSize: 16,
             }}
+            onClick={() => flashHint("Téléchargement simulé (démo).")}
           >
             Télécharger le reçu
           </button>
           <button
             type="button"
-            className="w-full font-semibold"
+            className="w-full font-semibold cursor-pointer"
             style={{
               height: 52,
               borderRadius: 10,
@@ -1020,10 +1494,21 @@ function ConfirmationScreen({ plate, onHome }) {
               color: COLORS.primaryBlue,
               fontSize: 16,
             }}
+            onClick={() =>
+              flashHint("Ajout au calendrier simulé (aucune donnée envoyée).")
+            }
           >
             Ajouter au calendrier
           </button>
         </div>
+        {hint ? (
+          <p
+            className="w-full text-center mt-2"
+            style={{ fontSize: 13, color: COLORS.textSecondary }}
+          >
+            {hint}
+          </p>
+        ) : null}
 
         <button
           type="button"
@@ -1053,8 +1538,16 @@ function ScreenShell({ title, step, children, showBack, onBack }) {
 
 function App() {
   const [screen, setScreen] = useState("home");
+  const [mainTab, setMainTab] = useState("home");
   const [plate, setPlate] = useState("123 TU 4567");
+  const [plateType, setPlateType] = useState("Tunisienne");
+  const [category, setCategory] = useState("Voiture particulière");
   const [centerId, setCenterId] = useState("1");
+  const [visitDay, setVisitDay] = useState(13);
+  const [visitSlot, setVisitSlot] = useState("09:30");
+
+  const centerLine = centerSummaryLine(CENTERS, centerId);
+  const dateLine = formatVisitDateMay2026(visitDay);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -1068,44 +1561,70 @@ function App() {
       step2: "step1",
       step3: "step2",
       step4: "step3",
+      visitReminder: "home",
+      appointments: "home",
+      results: "home",
+      history: "home",
+      support: "home",
     };
     if (map[screen]) setScreen(map[screen]);
   };
 
   const tabBarStyle = {};
 
+  if (
+    screen === "visitReminder" ||
+    screen === "appointments" ||
+    screen === "results" ||
+    screen === "history" ||
+    screen === "support"
+  ) {
+    return (
+      <ShellFont>
+        {screen === "visitReminder" && <ScreenVisitReminder onBack={goBack} />}
+        {screen === "appointments" && <ScreenAppointments onBack={goBack} />}
+        {screen === "results" && <ScreenResults onBack={goBack} />}
+        {screen === "history" && <ScreenHistory onBack={goBack} />}
+        {screen === "support" && <ScreenSupport onBack={goBack} />}
+      </ShellFont>
+    );
+  }
+
   if (screen === "home") {
     return (
-      <div
-        className="w-full min-h-[100vh] antialiased"
-        style={{
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          color: COLORS.textPrimary,
-        }}
-      >
+      <ShellFont>
         <HomeScreen
           tabBarStyle={tabBarStyle}
+          mainTab={mainTab}
+          onTabHome={() => setMainTab("home")}
+          onTabProfile={() => setMainTab("profile")}
+          onProfileTap={() => setMainTab("profile")}
           onBook={() => setScreen("step1")}
+          onOpenReminder={() => setScreen("visitReminder")}
+          onOpenAppointments={() => setScreen("appointments")}
+          onOpenResults={() => setScreen("results")}
+          onOpenHistory={() => setScreen("history")}
+          onOpenSupport={() => setScreen("support")}
         />
-      </div>
+      </ShellFont>
     );
   }
 
   if (screen === "confirmation") {
     return (
-      <div
-        className="w-full min-h-[100vh] flex flex-col antialiased"
-        style={{
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          color: COLORS.textPrimary,
-        }}
-      >
+      <ShellFont>
         <Header variant="confirmation" title="Confirmation" />
         <ConfirmationScreen
           plate={plate}
-          onHome={() => setScreen("home")}
+          centerLine={centerLine}
+          dateLine={dateLine}
+          timeLine={visitSlot}
+          onHome={() => {
+            setScreen("home");
+            setMainTab("home");
+          }}
         />
-      </div>
+      </ShellFont>
     );
   }
 
@@ -1118,14 +1637,7 @@ function App() {
   const steps = { step1: 1, step2: 2, step3: 3, step4: 4 };
 
   return (
-    <div
-      className="w-full min-h-[100vh] flex flex-col antialiased"
-      style={{
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-        color: COLORS.textPrimary,
-        fontSize: 14,
-      }}
-    >
+    <ShellFont>
       <ScreenShell
         title={titles[screen]}
         step={steps[screen]}
@@ -1136,6 +1648,10 @@ function App() {
           <Step1Vehicle
             plate={plate}
             setPlate={setPlate}
+            plateType={plateType}
+            setPlateType={setPlateType}
+            category={category}
+            setCategory={setCategory}
             onContinue={() => setScreen("step2")}
           />
         )}
@@ -1147,13 +1663,26 @@ function App() {
           />
         )}
         {screen === "step3" && (
-          <Step3Calendar onContinue={() => setScreen("step4")} />
+          <Step3Calendar
+            selectedDay={visitDay}
+            setSelectedDay={setVisitDay}
+            slot={visitSlot}
+            setSlot={setVisitSlot}
+            onContinue={() => setScreen("step4")}
+          />
         )}
         {screen === "step4" && (
-          <Step4Summary plate={plate} onConfirm={() => setScreen("confirmation")} />
+          <Step4Summary
+            plate={plate}
+            category={category}
+            centerLine={centerLine}
+            dateLine={dateLine}
+            timeLine={visitSlot}
+            onConfirm={() => setScreen("confirmation")}
+          />
         )}
       </ScreenShell>
-    </div>
+    </ShellFont>
   );
 }
 
